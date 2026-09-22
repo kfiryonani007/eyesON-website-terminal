@@ -81,9 +81,11 @@
 
   /* ---------- hero scroll scrub ----------
      The hero never autoplays. #heroScrub is a tall wrapper; the hero inside
-     is position:sticky so it stays pinned while we swap still frames based on
-     scroll progress through the wrapper. Once the wrapper's extra height is
-     consumed, the pin releases and the page scrolls on normally. */
+     is position:sticky so it stays pinned while scroll progress picks a frame.
+     Every frame is mounted as its own <img> layer up front and we only flip
+     opacity — swapping a single img.src re-decodes on each step, which is what
+     made the old version stutter. Frame 1 is the base layer and always paints,
+     so the hero still looks right with JS off or reduced-motion on. */
   var heroWrapper = document.getElementById("heroScrub");
   var heroImg = document.getElementById("heroScrubImg");
   if (heroWrapper && heroImg && !reduced) {
@@ -91,79 +93,58 @@
     var framePath = function (n) {
       return "assets/hero/frames/frame-" + String(n).padStart(3, "0") + ".jpg";
     };
-    var frames = [];
-    for (var i = 1; i <= frameCount; i++) {
-      var pre = new Image();
-      pre.src = framePath(i);
-      frames.push(pre.src);
+
+    /* mount frames 2..N as stacked layers above the base image */
+    var layers = [];
+    for (var i = 2; i <= frameCount; i++) {
+      var layer = document.createElement("img");
+      layer.className = "hero-bg hero-frame-layer";
+      layer.src = framePath(i);
+      layer.alt = "";
+      layer.decoding = "sync";
+      layer.setAttribute("aria-hidden", "true");
+      heroImg.parentNode.insertBefore(layer, heroImg.nextSibling);
+      layers.push(layer);
     }
-    var currentFrame = 1;
-    var ticking = false;
-    var updateFrame = function () {
-      ticking = false;
+
+    var activeLayer = null;
+    var shownFrame = 1;
+    var showFrame = function (n) {
+      if (n === shownFrame) return;
+      shownFrame = n;
+      var next = n === 1 ? null : layers[n - 2];
+      if (next === activeLayer) return;
+      if (activeLayer) activeLayer.classList.remove("is-active");
+      if (next) next.classList.add("is-active");
+      activeLayer = next;
+    };
+
+    /* pos eases toward target so a flick of the wheel plays through the
+       frames instead of snapping — this is the "smooth" part */
+    var pos = 1, target = 1, raf = null;
+    var tick = function () {
+      var diff = target - pos;
+      if (Math.abs(diff) < 0.02) {
+        pos = target;
+        showFrame(Math.round(pos));
+        raf = null;
+        return;
+      }
+      pos += diff * 0.3;
+      showFrame(Math.round(pos));
+      raf = requestAnimationFrame(tick);
+    };
+    var measure = function () {
       var rect = heroWrapper.getBoundingClientRect();
       var scrollable = rect.height - window.innerHeight;
       var progress = scrollable > 0 ? -rect.top / scrollable : 0;
       progress = Math.min(Math.max(progress, 0), 1);
-      var target = Math.round(progress * (frameCount - 1)) + 1;
-      if (target !== currentFrame) {
-        currentFrame = target;
-        heroImg.src = frames[target - 1];
-      }
+      target = progress * (frameCount - 1) + 1;
+      if (!raf) raf = requestAnimationFrame(tick);
     };
-    window.addEventListener("scroll", function () {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(updateFrame);
-      }
-    }, { passive: true });
-  }
-
-  /* ---------- eye cursor follower ----------
-     A camera-lens "eye" trails the pointer; the pupil leans toward the
-     direction of travel, so it reads as an eye watching you move.
-     Desktop pointers only — skipped on touch and for reduced-motion. */
-  var finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-  if (finePointer && !reduced) {
-    document.documentElement.classList.add("eye-cursor-active");
-    var eye = document.createElement("div");
-    eye.className = "eye-cursor";
-    eye.setAttribute("aria-hidden", "true");
-    eye.innerHTML = '<span class="eye-ring"></span><span class="eye-pupil"></span>';
-    document.body.appendChild(eye);
-    var pupil = eye.querySelector(".eye-pupil");
-
-    var mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
-    var eyeX = mouseX, eyeY = mouseY;
-    var shown = false;
-
-    window.addEventListener("mousemove", function (e) {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      if (!shown) { shown = true; eye.classList.add("active"); }
-    }, { passive: true });
-
-    document.addEventListener("mouseleave", function () {
-      shown = false;
-      eye.classList.remove("active");
-    });
-
-    var renderEye = function () {
-      // trail behind the pointer with easing
-      eyeX += (mouseX - eyeX) * 0.16;
-      eyeY += (mouseY - eyeY) * 0.16;
-      eye.style.transform = "translate(" + (eyeX - 21) + "px," + (eyeY - 21) + "px)";
-
-      // pupil leans toward where the pointer is relative to the lens
-      var dx = mouseX - eyeX;
-      var dy = mouseY - eyeY;
-      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      var lean = Math.min(dist / 8, 6);
-      pupil.style.transform = "translate(" + (dx / dist) * lean + "px," + (dy / dist) * lean + "px)";
-
-      requestAnimationFrame(renderEye);
-    };
-    requestAnimationFrame(renderEye);
+    window.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("resize", measure, { passive: true });
+    measure();
   }
 
   /* ---------- tilt cards ("מי אנחנו") ----------
@@ -171,6 +152,7 @@
      step needed for this static site): on mousemove, rotate the card toward
      the pointer and update --mx/--my custom properties that drive the glow
      layer in CSS. Desktop pointers only, skipped for reduced-motion. */
+  var finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   if (finePointer && !reduced) {
     document.querySelectorAll("#about .cards-3 .card").forEach(function (card) {
       var resetTilt = function () {
