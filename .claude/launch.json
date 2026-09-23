@@ -7,6 +7,13 @@
       "runtimeArgs": ["--yes", "serve", "."],
       "port": 3100,
       "autoPort": true
+    },
+    {
+      "name": "eyeson-admin",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/dev-server.js"],
+      "port": 4000,
+      "autoPort": true
     }
   ]
 }

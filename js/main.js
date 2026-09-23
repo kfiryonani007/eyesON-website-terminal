@@ -180,7 +180,8 @@
   /* ---------- contact form ----------
      No backend is wired up yet (TODO(client) — see README): on submit we
      validate, then hand the filled-in details to the user's own mail app
-     via a mailto: link addressed to info@eyeson.co.il. */
+     via a mailto: link. The target address lives in content/site.json and is
+     written onto the form as data-contact-email by build.js. */
   document.querySelectorAll("form.contact-form").forEach(function (form) {
     var fields = {
       fullName: { label: "שם מלא", required: true },
@@ -249,7 +250,10 @@
       });
 
       var subject = "פנייה חדשה מאתר EYESON — " + (form.elements.fullName.value.trim() || "");
-      var mailto = "mailto:info@eyeson.co.il"
+      // address comes from the form's data attribute so the CMS owns it
+      // (build.js keeps data-contact-email in sync with content/site.json)
+      var to = form.getAttribute("data-contact-email") || "info@eyeson.co.il";
+      var mailto = "mailto:" + to
         + "?subject=" + encodeURIComponent(subject)
         + "&body=" + encodeURIComponent(lines.join("\n"));
 
