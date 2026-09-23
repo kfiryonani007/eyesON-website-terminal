@@ -50,22 +50,26 @@ a { color: inherit; }
 .gate-form { display: grid; gap: 0.6rem; margin-top: 1.4rem; text-align: start; }
 .gate-form label { font-weight: 700; font-size: 0.88rem; }
 .pass-wrap { position: relative; }
-.pass-wrap input { width: 100%; padding-inline-end: 3.6rem; }
+.pass-wrap input { width: 100%; padding-inline-end: 2.9rem; }
 .pass-toggle {
   position: absolute;
-  inset-inline-end: 0.4rem;
+  inset-inline-end: 0.35rem;
   top: 50%;
   transform: translateY(-50%);
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  width: 32px; height: 32px;
+  padding: 0;
+  border: 0;
   border-radius: 8px;
-  background: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
+  background: none;
   color: var(--ink-soft);
   cursor: pointer;
+  transition: color 0.2s, background 0.2s;
 }
-.pass-toggle:hover { color: var(--ink); border-color: #cfccdd; }
+.pass-toggle svg { width: 19px; height: 19px; display: block; }
+.pass-toggle:hover { color: var(--ink); background: #f1eff9; }
+.pass-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .gate-error { color: var(--accent); font-size: 0.88rem; min-height: 1.2em; }
 
 /* ---------- buttons ---------- */

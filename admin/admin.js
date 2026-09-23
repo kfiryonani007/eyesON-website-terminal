@@ -374,13 +374,17 @@
     document.getElementById("gatePass").focus();
   }
 
+  var EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.6 12S5.5 5 12 5s10.4 7 10.4 7-3.9 7-10.4 7S1.6 12 1.6 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>';
+  var EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.9 5.2A9.6 9.6 0 0 1 12 5c6.5 0 10.4 7 10.4 7a17 17 0 0 1-3.2 4"/><path d="M6.3 6.7A17 17 0 0 0 1.6 12S5.5 19 12 19a9.5 9.5 0 0 0 4-.85"/><path d="M9.8 9.9a3.2 3.2 0 0 0 4.4 4.4"/><path d="M3 3l18 18"/></svg>';
+
   var passToggle = document.getElementById("passToggle");
   if (passToggle) {
     passToggle.addEventListener("click", function () {
       var input = document.getElementById("gatePass");
       var show = input.type === "password";
       input.type = show ? "text" : "password";
-      passToggle.textContent = show ? "הסתר" : "הצג";
+      passToggle.innerHTML = show ? EYE_OFF : EYE;
+      passToggle.setAttribute("aria-pressed", String(show));
       passToggle.setAttribute("aria-label", show ? "הסתרת הסיסמה" : "הצגת הסיסמה");
       input.focus();
     });

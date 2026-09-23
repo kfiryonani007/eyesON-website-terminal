@@ -24,6 +24,13 @@ const path = require("path");
 const ROOT = __dirname;
 const CONTENT = path.join(ROOT, "content", "site.json");
 const CHECK = process.argv.includes("--check");
+const DIST = process.argv.includes("--dist");
+
+/* Only these reach the browser. Everything else — the api/ helpers, this
+   script, the dev tooling, the content source — stays out of the deployment,
+   so none of it is fetchable as plain text. */
+const PUBLIC_DIRS = ["css", "js", "assets", "admin"];
+const PUBLIC_ROOT_EXT = [".html", ".svg", ".ico", ".txt", ".xml"];
 
 /* ---------- helpers ---------- */
 
@@ -236,6 +243,49 @@ function main() {
     problems.forEach((p) => console.error("  " + p));
     process.exit(1);
   }
+
+  if (DIST && !CHECK) copyToDist();
+}
+
+/* Assemble the deployable tree. Vercel serves this directory and nothing
+   else, so api/, scripts/, content/ and this file are simply not there to
+   be requested. The api/ functions are still picked up by Vercel from the
+   repo root — they are routed, not served as files. */
+function copyToDist() {
+  const dist = path.join(ROOT, "dist");
+  fs.rmSync(dist, { recursive: true, force: true });
+  fs.mkdirSync(dist, { recursive: true });
+
+  let files = 0;
+  for (const entry of fs.readdirSync(ROOT, { withFileTypes: true })) {
+    if (entry.name === "dist") continue;
+    const from = path.join(ROOT, entry.name);
+    const to = path.join(dist, entry.name);
+
+    if (entry.isDirectory()) {
+      if (!PUBLIC_DIRS.includes(entry.name)) continue;
+      // notes and docs travel with the source, not with the site
+      fs.cpSync(from, to, {
+        recursive: true,
+        filter: (src) => path.extname(src).toLowerCase() !== ".md",
+      });
+      files += countFiles(to);
+    } else if (PUBLIC_ROOT_EXT.indexOf(path.extname(entry.name).toLowerCase()) !== -1) {
+      fs.copyFileSync(from, to);
+      files++;
+    }
+  }
+  console.log(
+    "\ndist/ built: " + files + " public files (api/, scripts/, content/ and build.js excluded)"
+  );
+}
+
+function countFiles(dir) {
+  let n = 0;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    n += e.isDirectory() ? countFiles(path.join(dir, e.name)) : 1;
+  }
+  return n;
 }
 
 main();
